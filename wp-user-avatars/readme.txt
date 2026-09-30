@@ -7,10 +7,12 @@ License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 License:           GPLv2 or later
 Contributors:      johnjamesjacoby
 Tags:              user, profile, avatar, media, local
-Requires PHP:      7.2
-Requires at least: 5.2
-Tested up to:      5.8
-Stable tag:        1.4.1
+Requires PHP:      7.4
+Requires at least: 6.4
+Tested up to:      7.1
+Stable tag:        2.0.0
+
+Allow registered users to upload and select their own avatars.
 
 == Description ==
 
@@ -62,6 +64,18 @@ It works OK, but you'll want to consider exactly what level of privacy is best f
 * Development: https://github.com/stuttter/wp-user-avatars/discussions
 
 == Changelog ==
+
+= 2.0.0 =
+* Require PHP 7.4 and WordPress 6.4 or newer.
+* Declare compatibility with WordPress 7.1.
+* Add WebP avatar uploads.
+* Prevent blocked Gravatar requests from leaking from the Comments screen.
+* Support remotely stored avatars, including WP Offload Media.
+* Support instant avatar uploads and previews.
+* Support avatar uploads, Media Library selection, and removal on bbPress profile screens.
+* Restrict Media Library selection to users who can browse it.
+* Display the avatar preview when public avatar display is disabled.
+* Improve uploads, translation loading, file deletion, automated testing, and contributor tooling.
 
 = [1.4.1] - 2021-05-29 =
 * Update author info

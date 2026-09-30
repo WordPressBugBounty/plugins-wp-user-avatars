@@ -15,6 +15,8 @@ defined( 'ABSPATH' ) || exit;
  * Register avatar settings
  *
  * @since 0.1.0
+ *
+ * @return void
  */
 function wp_user_avatars_register_settings() {
 
@@ -38,6 +40,8 @@ function wp_user_avatars_register_settings() {
  * Settings field for preventing requests to Gravatar
  *
  * @since 0.1.0
+ *
+ * @return void
  */
 function wp_user_avatars_settings_field_gravatar() {
 
@@ -56,6 +60,8 @@ function wp_user_avatars_settings_field_gravatar() {
  * Settings field for cherry-picking which roles are allowed to upload avatars
  *
  * @since 0.1.0
+ *
+ * @return void
  */
 function wp_user_avatars_settings_field_roles() {
 
@@ -70,7 +76,7 @@ function wp_user_avatars_settings_field_roles() {
 
 		<label>
 			<input type="checkbox" name="wp_user_avatars_roles[]" value="<?php echo esc_attr( $role_id ); ?>" <?php checked( in_array( $role_id, $val ) ); ?> />
-			<?php echo translate_user_role( $role['name'] ); ?>
+			<?php echo esc_html( translate_user_role( $role['name'] ) ); ?>
 		</label>
 		<br>
 
@@ -86,9 +92,9 @@ function wp_user_avatars_settings_field_roles() {
  *
  * @since 0.1.0
  *
- * @param  array $input Passed input values to sanitize
+ * @param  array<int, string> $input Passed input values to sanitize
  *
- * @return array Sanitized input fields
+ * @return array<int, string> Sanitized input fields
  */
 function wp_user_avatars_sanitize_roles( $input ) {
 	$roles = array_keys( get_editable_roles() );
@@ -100,9 +106,9 @@ function wp_user_avatars_sanitize_roles( $input ) {
  *
  * @since 0.1.0
  *
- * @param  array $input Passed input values to sanitize
+ * @param  mixed $input Passed input value to sanitize
  *
- * @return array Sanitized input fields
+ * @return bool Sanitized input field
  */
 function wp_user_avatars_sanitize_block_gravatar( $input ) {
 	return (bool) $input;
@@ -112,21 +118,33 @@ function wp_user_avatars_sanitize_block_gravatar( $input ) {
  * Add scripts to the profile editing page
  *
  * @since 0.1.0
+ *
+ * @return void
  */
 function wp_user_avatars_admin_enqueue_scripts() {
 
 	// Bail if not editing a user
-	if ( ! defined( 'IS_PROFILE_PAGE' ) ) {
+	$is_bbpress_edit = function_exists( 'bbp_is_single_user_edit' ) && bbp_is_single_user_edit();
+	if ( ! defined( 'IS_PROFILE_PAGE' ) && ! $is_bbpress_edit ) {
 		return;
 	}
 
-	// Enqueue media
-	wp_enqueue_media();
-
 	// User ID
-	$user_id = ! empty( $_GET['user_id'] )
-		? (int) $_GET['user_id']
-		: get_current_user_id();
+	if ( $is_bbpress_edit && function_exists( 'bbp_get_displayed_user_id' ) ) {
+		$user_id = (int) bbp_get_displayed_user_id();
+	} else {
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Read-only screen context; no state is changed from this value.
+		$user_id = ! empty( $_GET['user_id'] )
+			? (int) $_GET['user_id']
+			: get_current_user_id();
+		// phpcs:enable WordPress.Security.NonceVerification.Recommended
+	}
+
+	// Only users with Media Library access should load or browse it.
+	// phpcs:ignore WordPress.WP.Capabilities.Unknown -- Custom avatar capability mapped by wp_user_avatars_meta_caps().
+	if ( current_user_can( 'select_avatar', $user_id ) ) {
+		wp_enqueue_media();
+	}
 
 	// URL & Version
 	$url = wp_user_avatars_get_plugin_url();
@@ -145,6 +163,9 @@ function wp_user_avatars_admin_enqueue_scripts() {
 		'insertIntoPost'   => esc_html__( 'Set as avatar',    'wp-user-avatars' ),
 		'deleteNonce'      => wp_create_nonce( 'remove_wp_user_avatars_nonce' ),
 		'mediaNonce'       => wp_create_nonce( 'assign_wp_user_avatars_nonce' ),
+		'uploadNonce'      => wp_create_nonce( 'upload_wp_user_avatars_nonce' ),
+		'ajaxUrl'          => admin_url( 'admin-ajax.php' ),
+		'uploadError'      => esc_html__( 'The avatar could not be uploaded. Please try again.', 'wp-user-avatars' ),
 		'user_id'          => $user_id,
 	) );
 }
@@ -154,9 +175,15 @@ function wp_user_avatars_admin_enqueue_scripts() {
  *
  * @since 0.1.0
  *
- * @param object $user User object
+ * @param WP_User|int $user User object
+ *
+ * @return void
  */
 function wp_user_avatars_edit_user_profile( $user = 0 ) {
+
+	if ( ! $user instanceof WP_User ) {
+		return;
+	}
 
 	// Bail if current user cannot edit this user's avatar and rating
 	if ( ! current_user_can( 'edit_avatar', $user->ID ) && ! current_user_can( 'edit_avatar_rating', $user->ID ) ) {
@@ -178,7 +205,9 @@ function wp_user_avatars_edit_user_profile( $user = 0 ) {
  *
  * @since 0.1.0
  *
- * @param  object $user
+ * @param WP_User|null $user User object.
+ *
+ * @return void
  */
 function wp_user_avatars_section_content( $user = null ) {
 
@@ -197,7 +226,7 @@ function wp_user_avatars_section_content( $user = null ) {
 			<tr>
 				<th scope="row"><label for="wp-user-avatars"><?php esc_html_e( 'Upload', 'wp-user-avatars' ); ?></label></th>
 				<td id="wp-user-avatars-photo"><?php
-					echo get_avatar( $user->ID, 250 );
+					echo wp_kses_post( wp_user_avatars_get_avatar_preview( $user->ID, 250 ) );
 				?></td>
 				<td id="wp-user-avatars-actions"><?php
 
@@ -214,8 +243,9 @@ function wp_user_avatars_section_content( $user = null ) {
 
 						<?php
 
-						// Prevent errors if not enqueued successfully
-						if ( did_action( 'wp_enqueue_media' ) ) : ?>
+						// Only expose the Media Library to users who can browse it
+						// phpcs:ignore WordPress.WP.Capabilities.Unknown -- Custom avatar capability mapped by wp_user_avatars_meta_caps().
+						if ( current_user_can( 'select_avatar', $user->ID ) ) : ?>
 
 							<a href="#" class="button hide-if-no-js" id="wp-user-avatars-media">
 								<?php esc_html_e( 'Choose from Media', 'wp-user-avatars' ); ?>
@@ -243,6 +273,7 @@ function wp_user_avatars_section_content( $user = null ) {
 					</div>
 
 					<?php wp_nonce_field( 'wp_user_avatars_nonce', '_wp_user_avatars_nonce', false ); ?>
+					<p id="wp-user-avatars-feedback" class="description" aria-live="polite"></p>
 
 				</td>
 			</tr>
@@ -284,6 +315,8 @@ function wp_user_avatars_section_content( $user = null ) {
  * Maybe remove legacy actions and rely on WP User Profiles instead.
  *
  * @since 1.1.0
+ *
+ * @return void
  */
 function wp_user_profiles_unhook_legacy_fields() {
 	if ( class_exists( 'WP_User_Profile_Section' ) ) {

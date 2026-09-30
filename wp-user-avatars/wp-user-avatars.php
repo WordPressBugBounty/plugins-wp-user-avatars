@@ -10,10 +10,10 @@
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       wp-user-avatars
  * Domain Path:       /wp-user-avatars/assets/languages
- * Requires at least: 5.2
- * Requires PHP:      7.0
- * Tested up to:      5.8
- * Version:           1.4.1
+ * Requires at least: 6.4
+ * Requires PHP:      7.4
+ * Tested up to:      7.1
+ * Version:           2.0.0
  */
 
 // Exit if accessed directly
@@ -23,8 +23,10 @@ defined( 'ABSPATH' ) || exit;
  * Include the plugin files
  *
  * @since 0.1.0
+ *
+ * @return void
  */
-function _wp_user_avatars() {
+function _wp_user_avatars() { // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedFunctionFound -- Legacy loader retained for backward compatibility.
 
 	// Get the plugin path
 	$plugin_path = plugin_dir_path( __FILE__ ) . 'wp-user-avatars/';
@@ -39,9 +41,6 @@ function _wp_user_avatars() {
 	require_once $plugin_path . 'includes/sponsor.php';
 	require_once $plugin_path . 'includes/uninstall.php';
 	require_once $plugin_path . 'includes/hooks.php';
-
-	// Load translations
-	load_plugin_textdomain( 'wp-user-avatars', false, $plugin_path . 'assets/languages/' );
 }
 add_action( 'plugins_loaded', '_wp_user_avatars' );
 
@@ -66,5 +65,5 @@ function wp_user_avatars_get_plugin_url() {
 function wp_user_avatars_get_asset_version() {
 	return defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG
 		? time()
-		: 202105290001;
+		: 202609290001;
 }

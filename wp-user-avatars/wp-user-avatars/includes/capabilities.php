@@ -14,17 +14,23 @@ defined( 'ABSPATH' ) || exit;
  *
  * @since 0.1.0
  *
- * @param  array   $caps     Capabilities for meta capability
+ * @param  array<int, string> $caps     Capabilities for meta capability
  * @param  string  $cap      Capability name
  * @param  int     $user_id  User id
- * @param  array   $args     Arguments
+ * @param  array<int, mixed> $args     Arguments
  *
- * @return array   Actual capabilities for meta capability
+ * @return array<int, string> Actual capabilities for meta capability
  */
 function wp_user_avatars_meta_caps( $caps = array(), $cap = '', $user_id = 0, $args = array() ) {
 
 	// What capability is being checked?
 	switch ( $cap ) {
+		// Select an existing Media Library attachment.
+		case 'select_avatar':
+			if ( user_can( $user_id, 'edit_user', $args[0] ) && user_can( $user_id, 'upload_files' ) ) {
+				$caps = array();
+			}
+			break;
 
 		// Upload
 		case 'upload_avatar' :
