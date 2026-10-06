@@ -347,6 +347,17 @@ function wp_user_avatars_get_local_avatar_url( $user_id = false, $size = 250 ) {
 		}
 	}
 
+	/**
+	 * Filters whether WP User Avatars may generate the requested local size.
+	 *
+	 * @since 0.1.0
+	 * @since 1.4.1 Added the `$user_id`, `$size`, and `$user_avatars` parameters.
+	 *
+	 * @param bool  $dynamic_resize Whether to generate an uncached size.
+	 * @param int   $user_id        Avatar owner's user ID.
+	 * @param int   $size           Requested square size in pixels.
+	 * @param array $user_avatars   Stored avatar data.
+	 */
 	$dynamic_resize = apply_filters( 'wp_user_avatars_dynamic_resize', true, $user_id, $size, $user_avatars );
 
 	// Return early if there's no media to check and we either have an avatar of the correct size or don't dynamically resize
@@ -521,6 +532,43 @@ function wp_user_avatars_filter_get_avatar_url( $url, $id_or_email, $args ) {
 
 	// Return maybe-local URL
 	return $url;
+}
+
+/**
+ * Restore local-avatar precedence when another provider returns early.
+ *
+ * Normal requests continue through get_avatar_url so existing filters retain
+ * their established order. This callback only handles requests that another
+ * pre_get_avatar_data provider has already short-circuited.
+ *
+ * @since 2.1.0
+ *
+ * @param array $args        Processed avatar arguments.
+ * @param mixed $id_or_email Avatar identity.
+ *
+ * @phpstan-param array<string, mixed> $args
+ * @phpstan-return array<string, mixed>
+ *
+ * @return array
+ */
+function wp_user_avatars_filter_pre_get_avatar_data( $args, $id_or_email ) {
+
+	// Preserve the normal get_avatar_url path when no provider returned early
+	if ( ! isset( $args['url'] ) ) {
+		return $args;
+	}
+
+	// Resolve against an empty sentinel so matching provider and local URLs are
+	// still recognized as a successfully resolved local avatar.
+	$avatar_url = wp_user_avatars_filter_get_avatar_url( '', $id_or_email, $args );
+
+	// Mark a resolved local avatar as found
+	if ( ! empty( $avatar_url ) ) {
+		$args['url']          = $avatar_url;
+		$args['found_avatar'] = true;
+	}
+
+	return $args;
 }
 
 /**

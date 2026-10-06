@@ -10,7 +10,7 @@ Tags:              user, profile, avatar, media, local
 Requires PHP:      7.4
 Requires at least: 6.4
 Tested up to:      7.1
-Stable tag:        2.0.1
+Stable tag:        2.1.0
 
 Allow registered users to upload and select their own avatars.
 
@@ -58,12 +58,72 @@ If you like this plugin, you'll probably like these!
 
 It works OK, but you'll want to consider exactly what level of privacy is best for your installation.
 
+= How do I add the avatar editor to a normal page? =
+
+Add the User Avatar Editor block or `[wp_user_avatars]` shortcode to an existing page. Both display the avatar editor for the signed-in user and do not create a profile page, registration flow, or membership system.
+
+The block adds no heading or description by default. Add either inline in the editor when the surrounding page needs more context. The block also supports background, text, border, spacing, typography, and wide-alignment controls.
+
+The shortcode uses the same avatar capabilities, upload restrictions, ratings, and Media Library permissions as the WordPress profile and bbPress profile integrations. Users without Media Library access can still upload their own avatar when the site's avatar permissions allow it. Uploads can include a rating without JavaScript. Rating changes and removal also work without JavaScript when an avatar already exists. Choosing an existing Media Library image requires JavaScript.
+
+Theme and plugin developers can render the same current-user editor with `wp_user_avatars_get_editor()`.
+
+The front-end editor uses semantic form groups instead of WordPress admin table markup. Themes can customize the `wp-user-avatars-frontend-form` classes. The block exposes `--wp-user-avatars-card-*` CSS custom properties on its wrapper. The block controls and shortcode expose `--wp-user-avatars-button-*` and `--wp-user-avatars-primary-*` properties on the block wrapper or an ancestor of the shortcode.
+
+= How do I display a larger or sharper avatar? =
+
+WP User Avatars uses the image size requested by WordPress. Ask for the intended display size instead of enlarging the default 96-pixel image with CSS:
+
+`echo get_avatar( get_the_author_meta( 'ID' ), 256 );`
+
+When you only need the URL, pass the size explicitly:
+
+`$url = get_avatar_url( $user_id, array( 'size' => 256 ) );`
+
+WordPress requests a 2x source for `get_avatar()`, so the first example can also provide a sharper image on high-density displays when the uploaded source is large enough. Theme builders need to expose or pass the intended avatar size; CSS alone cannot recover detail from a 96-pixel URL.
+
+= How do I set alternative text for an avatar? =
+
+WordPress creates avatar image markup. Pass meaningful alternative text as the fourth argument to `get_avatar()` when the avatar conveys information:
+
+`echo get_avatar( $user_id, 96, '', 'Portrait of Jane Doe' );`
+
+WordPress escapes that value when it creates the HTML attribute. WP User Avatars supplies the image URL and preserves the caller's alternative text. It does not copy alternative text from a Media Library attachment. A directly uploaded avatar may not have an attachment, and WordPress uses the same empty value when a caller omits alternative text or deliberately marks an avatar as decorative. Leave the fourth argument empty when nearby text already identifies the person and the avatar adds no information. Themes that build their own `<img>` markup must set the `alt` attribute themselves.
+
+= How do I limit generated avatar sizes? =
+
+WP User Avatars creates a square derivative the first time WordPress requests an uncached size for a directly uploaded avatar. To disable future plugin-owned dynamic resizing, add this to a site plugin, must-use plugin, or your theme's `functions.php` file:
+
+    add_filter( 'wp_user_avatars_dynamic_resize', '__return_false' );
+
+To allow only selected sizes, inspect the requested size with the same filter:
+
+    add_filter(
+        'wp_user_avatars_dynamic_resize',
+        function ( $resize, $user_id, $size ) {
+            $allowed_sizes = array( 96, 192, 256, 512 );
+
+            return $resize && in_array( (int) $size, $allowed_sizes, true );
+        },
+        10,
+        3
+    );
+
+For a directly uploaded avatar or a locally stored Media Library attachment, a disallowed uncached request falls back to the original full-size URL. A derivative that was already cached remains available. Disallowing a size does not delete existing files or change stored avatar data. Remotely stored Media Library attachments continue to use WordPress image-size resolution.
+
 = Where can I get support? =
 
 * Community: https://wordpress.org/support/plugin/wp-user-avatars
 * Development: https://github.com/stuttter/wp-user-avatars/discussions
 
 == Changelog ==
+
+= 2.1.0 =
+* Add a User Avatar Editor block and `[wp_user_avatars]` shortcode for normal pages.
+* Keep local avatars ahead of avatar providers that return early, including when their URLs match.
+* Preserve the primary profile save action when avatar controls are present.
+* Explain avatar display sizes and generated-size limits.
+* Document avatar alternative-text behavior for themes and plugins.
 
 = 2.0.1 =
 * Avoid warnings and deny avatar capability checks without a valid target user.

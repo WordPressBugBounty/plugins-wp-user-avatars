@@ -21,6 +21,12 @@ add_filter( 'map_meta_cap', 'wp_user_avatars_meta_caps', 10, 4 );
 add_action( 'admin_enqueue_scripts', 'wp_user_avatars_admin_enqueue_scripts' );
 add_action( 'wp_enqueue_scripts', 'wp_user_avatars_admin_enqueue_scripts' );
 
+// Front-end editor.
+add_shortcode( 'wp_user_avatars', 'wp_user_avatars_shortcode' );
+add_action( 'init', 'wp_user_avatars_register_block' );
+add_action( 'template_redirect', 'wp_user_avatars_frontend_form_handler' );
+add_action( 'wp_enqueue_scripts', 'wp_user_avatars_frontend_enqueue_assets', 20 );
+
 // User profile
 add_action( 'show_user_profile',        'wp_user_avatars_edit_user_profile'        );
 add_action( 'edit_user_profile',        'wp_user_avatars_edit_user_profile'        );
@@ -36,6 +42,7 @@ add_filter( 'option_avatar_default',            'wp_user_avatars_option_avatar_d
 add_filter( 'pre_update_option_avatar_default', 'wp_user_avatars_update_option_avatar_default' );
 
 // Filter avatars
+add_filter( 'pre_get_avatar_data', 'wp_user_avatars_filter_pre_get_avatar_data', 99, 2 );
 add_filter( 'get_avatar_url', 'wp_user_avatars_filter_get_avatar_url', 10, 3 );
 add_filter( 'get_avatar_url', 'wp_user_avatars_maybe_use_local_mystery_person' );
 
